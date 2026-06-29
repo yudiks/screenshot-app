@@ -13,7 +13,10 @@ Capture a screen region on Mac, get a shareable link instantly, and annotate wit
 3. Launch the app.
 4. Press **⌘⇧9** or click **Capture Now** — drag to select a region and the annotation page opens automatically.
 
-> **First launch on macOS:** If the app is blocked, go to **System Settings → Privacy & Security** and click **Open Anyway**.
+> **macOS security warning:** The app is not code-signed, so macOS may say it's "damaged". Run this once in Terminal after installing:
+> ```bash
+> xattr -cr /Applications/desktop.app
+> ```
 
 ### Build from source
 
