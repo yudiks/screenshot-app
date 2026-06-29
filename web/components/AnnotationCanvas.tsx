@@ -409,6 +409,22 @@ export default function AnnotationCanvas({
                     text={s.text || " "}
                     fill={s.fill}
                     fontSize={FONT_SIZE}
+                    onClick={() => {
+                      if (tool !== "select") return;
+                      if (selectedId === s.id) {
+                        setEditingTextId(s.id);
+                      } else {
+                        setSelectedId(s.id);
+                      }
+                    }}
+                    onTap={() => {
+                      if (tool !== "select") return;
+                      if (selectedId === s.id) {
+                        setEditingTextId(s.id);
+                      } else {
+                        setSelectedId(s.id);
+                      }
+                    }}
                     onDblClick={() => { setSelectedId(s.id); setEditingTextId(s.id); }}
                     onDblTap={() => { setSelectedId(s.id); setEditingTextId(s.id); }}
                   />
