@@ -4,6 +4,10 @@ Capture a screen region on Mac, get a shareable link instantly, and annotate wit
 
 **Live:** https://web-tau-six-58.vercel.app
 
+## Demo
+
+https://github.com/yudiks/screenshot-app/releases/download/v0.4.0/demo-video.mp4
+
 ---
 
 ## Download the Mac App
