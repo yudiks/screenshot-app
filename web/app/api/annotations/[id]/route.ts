@@ -37,6 +37,7 @@ export async function POST(
   await put(`annotations/${id}.json`, JSON.stringify(shapes), {
     access: "private",
     addRandomSuffix: false,
+    allowOverwrite: true,
     contentType: "application/json",
   });
 
