@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use tauri::{
     AppHandle, Emitter,
-    menu::{Menu, MenuItem},
+    menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
 };
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
@@ -9,8 +9,6 @@ use tauri_plugin_opener::OpenerExt;
 
 const CAPTURE_SHORTCUT: &str = "CommandOrControl+Shift+9";
 
-// Set UPLOAD_API_BASE at build/run time to point at the deployed web/ app
-// (e.g. `UPLOAD_API_BASE=https://your-app.vercel.app cargo tauri dev`).
 fn upload_api_base() -> String {
     std::env::var("UPLOAD_API_BASE")
         .unwrap_or_else(|_| "https://web-tau-six-58.vercel.app".to_string())
@@ -31,11 +29,17 @@ struct UploadResponse {
     url: String,
 }
 
+enum CaptureMode {
+    Region,
+    Window,
+    Screen,
+}
+
 fn emit_status(app: &AppHandle, status: CaptureStatus) {
     let _ = app.emit("capture-status", status);
 }
 
-async fn capture_and_share(app: AppHandle) {
+async fn capture_and_share(app: AppHandle, mode: CaptureMode) {
     emit_status(&app, CaptureStatus::Capturing);
 
     let tmp_path = std::env::temp_dir().join(format!(
@@ -46,11 +50,16 @@ async fn capture_and_share(app: AppHandle) {
             .as_nanos()
     ));
 
-    // `-i` opens macOS's interactive region/window selector. If the user
-    // cancels (Escape), screencapture exits successfully but writes no file.
+    let mut args = vec!["-x"];
+    match mode {
+        CaptureMode::Region => { args.push("-i"); }
+        CaptureMode::Window => { args.push("-i"); args.push("-w"); }
+        CaptureMode::Screen => {} // no extra flags — captures main display immediately
+    }
+    args.push(tmp_path.to_str().unwrap());
+
     let spawn_result = std::process::Command::new("screencapture")
-        .arg("-i")
-        .arg(&tmp_path)
+        .args(&args)
         .status();
 
     let captured = match spawn_result {
@@ -164,7 +173,17 @@ async fn capture_and_share(app: AppHandle) {
 
 #[tauri::command]
 async fn capture_now(app: AppHandle) {
-    capture_and_share(app).await;
+    capture_and_share(app, CaptureMode::Region).await;
+}
+
+#[tauri::command]
+async fn capture_window(app: AppHandle) {
+    capture_and_share(app, CaptureMode::Window).await;
+}
+
+#[tauri::command]
+async fn capture_screen(app: AppHandle) {
+    capture_and_share(app, CaptureMode::Screen).await;
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -173,7 +192,7 @@ pub fn run() {
         .with_handler(|app, _shortcut, event| {
             if event.state == ShortcutState::Pressed {
                 let app = app.clone();
-                tauri::async_runtime::spawn(capture_and_share(app));
+                tauri::async_runtime::spawn(capture_and_share(app, CaptureMode::Region));
             }
         })
         .build();
@@ -181,26 +200,37 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(global_shortcut_plugin)
-        .invoke_handler(tauri::generate_handler![capture_now])
+        .invoke_handler(tauri::generate_handler![capture_now, capture_window, capture_screen])
         .setup(|app| {
             app.global_shortcut().register(CAPTURE_SHORTCUT)?;
 
-            // Hide dock icon on macOS — lives in the menu bar only
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
-            let capture_item = MenuItem::with_id(app, "capture", "Capture (⌘⇧9)", true, None::<&str>)?;
+            let region_item = MenuItem::with_id(app, "region", "Capture Region  ⌘⇧9", true, None::<&str>)?;
+            let window_item = MenuItem::with_id(app, "window", "Capture Window", true, None::<&str>)?;
+            let screen_item = MenuItem::with_id(app, "screen", "Capture Full Screen", true, None::<&str>)?;
+            let separator = PredefinedMenuItem::separator(app)?;
             let quit_item = MenuItem::with_id(app, "quit", "Quit ScreenCapture", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&capture_item, &quit_item])?;
+
+            let menu = Menu::with_items(app, &[&region_item, &window_item, &screen_item, &separator, &quit_item])?;
 
             TrayIconBuilder::with_id("main")
                 .icon(app.default_window_icon().unwrap().clone())
                 .menu(&menu)
                 .tooltip("ScreenCapture")
                 .on_menu_event(|app, event| match event.id.as_ref() {
-                    "capture" => {
+                    "region" => {
                         let app = app.clone();
-                        tauri::async_runtime::spawn(capture_and_share(app));
+                        tauri::async_runtime::spawn(capture_and_share(app, CaptureMode::Region));
+                    }
+                    "window" => {
+                        let app = app.clone();
+                        tauri::async_runtime::spawn(capture_and_share(app, CaptureMode::Window));
+                    }
+                    "screen" => {
+                        let app = app.clone();
+                        tauri::async_runtime::spawn(capture_and_share(app, CaptureMode::Screen));
                     }
                     "quit" => app.exit(0),
                     _ => {}
@@ -214,7 +244,7 @@ pub fn run() {
                     {
                         let app = tray.app_handle();
                         let app = app.clone();
-                        tauri::async_runtime::spawn(capture_and_share(app));
+                        tauri::async_runtime::spawn(capture_and_share(app, CaptureMode::Region));
                     }
                 })
                 .build(app)?;
