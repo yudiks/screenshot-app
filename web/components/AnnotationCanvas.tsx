@@ -6,7 +6,7 @@ import {
   Layer,
   Image as KonvaImage,
   Rect,
-  Circle,
+  Ellipse,
   Text as KonvaText,
   Transformer,
 } from "react-konva";
@@ -18,6 +18,11 @@ import ShareBar from "@/components/ShareBar";
 
 const TOOLBAR_HEIGHT = 48;
 const SHAREBAR_HEIGHT = 40;
+const FONT_SIZE = 28;
+
+function storageKey(shareUrl: string) {
+  return `annotations:${shareUrl}`;
+}
 
 export default function AnnotationCanvas({
   imageUrl,
@@ -34,7 +39,15 @@ export default function AnnotationCanvas({
   const [stageScale, setStageScale] = useState(1);
   const [tool, setTool] = useState<Tool>("select");
   const [color, setColor] = useState("#ff3b30");
-  const [shapes, setShapes] = useState<ShapeData[]>([]);
+  const [shapes, setShapes] = useState<ShapeData[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const saved = localStorage.getItem(storageKey(shareUrl));
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [editorBox, setEditorBox] = useState<{ left: number; top: number } | null>(
@@ -47,6 +60,13 @@ export default function AnnotationCanvas({
   const drawingRef = useRef<{ id: string; startX: number; startY: number } | null>(
     null
   );
+
+  // Auto-save shapes to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem(storageKey(shareUrl), JSON.stringify(shapes));
+    } catch {}
+  }, [shapes, shareUrl]);
 
   if (imageUrl !== loadedImageUrl) {
     setLoadedImageUrl(imageUrl);
@@ -102,6 +122,21 @@ export default function AnnotationCanvas({
     setEditorBox({ left: box.left, top: box.top });
   }, [editingTextId]);
 
+  // Delete selected shape with Delete or Backspace
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Delete" && e.key !== "Backspace") return;
+      if (editingTextId) return; // don't delete while typing
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (!selectedId) return;
+      setShapes((prev) => prev.filter((s) => s.id !== selectedId));
+      setSelectedId(null);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selectedId, editingTextId]);
+
   function handlePointerDown(e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) {
     const stage = stageRef.current;
     if (!stage) return;
@@ -127,7 +162,7 @@ export default function AnnotationCanvas({
     if (tool === "circle") {
       setShapes((prev) => [
         ...prev,
-        { id, type: "circle", x: pos.x, y: pos.y, radius: 0, stroke: color },
+        { id, type: "circle", x: pos.x, y: pos.y, radiusX: 0, radiusY: 0, stroke: color },
       ]);
       drawingRef.current = { id, startX: pos.x, startY: pos.y };
       return;
@@ -166,7 +201,14 @@ export default function AnnotationCanvas({
         if (s.type === "circle") {
           const dx = pos.x - drawing.startX;
           const dy = pos.y - drawing.startY;
-          return { ...s, radius: Math.sqrt(dx * dx + dy * dy) };
+          // Anchor top-left: center is always at midpoint of the drag bounding box
+          return {
+            ...s,
+            x: drawing.startX + dx / 2,
+            y: drawing.startY + dy / 2,
+            radiusX: Math.abs(dx) / 2,
+            radiusY: Math.abs(dy) / 2,
+          };
         }
         return s;
       })
@@ -181,7 +223,7 @@ export default function AnnotationCanvas({
       prev.filter((s) => {
         if (s.id !== drawing.id) return true;
         if (s.type === "rect") return s.width > 4 && s.height > 4;
-        if (s.type === "circle") return s.radius > 4;
+        if (s.type === "circle") return s.radiusX > 4 && s.radiusY > 4;
         return true;
       })
     );
@@ -215,7 +257,8 @@ export default function AnnotationCanvas({
             ...s,
             x: node.x(),
             y: node.y(),
-            radius: Math.max(5, s.radius * ((scaleX + scaleY) / 2)),
+            radiusX: Math.max(5, s.radiusX * scaleX),
+            radiusY: Math.max(5, s.radiusY * scaleY),
           };
         }
         return { ...s, x: node.x(), y: node.y() };
@@ -320,12 +363,13 @@ export default function AnnotationCanvas({
                 }
                 if (s.type === "circle") {
                   return (
-                    <Circle
+                    <Ellipse
                       key={s.id}
                       {...common}
                       x={s.x}
                       y={s.y}
-                      radius={s.radius}
+                      radiusX={s.radiusX}
+                      radiusY={s.radiusY}
                       stroke={s.stroke}
                       strokeWidth={3}
                     />
@@ -339,7 +383,7 @@ export default function AnnotationCanvas({
                     y={s.y}
                     text={s.text || " "}
                     fill={s.fill}
-                    fontSize={20}
+                    fontSize={FONT_SIZE}
                     onDblClick={() => { setSelectedId(s.id); setEditingTextId(s.id); }}
                     onDblTap={() => { setSelectedId(s.id); setEditingTextId(s.id); }}
                   />
@@ -348,7 +392,7 @@ export default function AnnotationCanvas({
               <Transformer
                 ref={transformerRef}
                 resizeEnabled={allowResize}
-                rotateEnabled={allowResize}
+                rotateEnabled={false}
               />
             </Layer>
           </Stage>
@@ -361,7 +405,7 @@ export default function AnnotationCanvas({
               position: "fixed",
               left: editorBox.left + editingShape.x * stageScale,
               top: editorBox.top + editingShape.y * stageScale,
-              fontSize: 20 * stageScale,
+              fontSize: FONT_SIZE * stageScale,
               color: editingShape.fill,
               background: "transparent",
               border: "1px dashed #999",

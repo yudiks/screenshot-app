@@ -15,7 +15,8 @@ export type CircleShape = {
   type: "circle";
   x: number;
   y: number;
-  radius: number;
+  radiusX: number;
+  radiusY: number;
   stroke: string;
 };
 
