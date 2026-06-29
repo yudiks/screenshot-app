@@ -20,10 +20,6 @@ const TOOLBAR_HEIGHT = 48;
 const SHAREBAR_HEIGHT = 40;
 const FONT_SIZE = 28;
 
-function storageKey(shareUrl: string) {
-  return `annotations:${shareUrl}`;
-}
-
 export default function AnnotationCanvas({
   imageUrl,
   shareUrl,
@@ -39,15 +35,9 @@ export default function AnnotationCanvas({
   const [stageScale, setStageScale] = useState(1);
   const [tool, setTool] = useState<Tool>("select");
   const [color, setColor] = useState("#ff3b30");
-  const [shapes, setShapes] = useState<ShapeData[]>(() => {
-    if (typeof window === "undefined") return [];
-    try {
-      const saved = localStorage.getItem(storageKey(shareUrl));
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [shapes, setShapes] = useState<ShapeData[]>([]);
+  const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | null>(null);
+  const isFirstLoad = useRef(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [editorBox, setEditorBox] = useState<{ left: number; top: number } | null>(
@@ -61,11 +51,33 @@ export default function AnnotationCanvas({
     null
   );
 
-  // Auto-save shapes to localStorage whenever they change
+  // Load annotations from server on mount
   useEffect(() => {
-    try {
-      localStorage.setItem(storageKey(shareUrl), JSON.stringify(shapes));
-    } catch {}
+    const id = shareUrl.split("/").pop();
+    fetch(`/api/annotations/${id}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) setShapes(data);
+      })
+      .catch(() => {})
+      .finally(() => { isFirstLoad.current = false; });
+  }, [shareUrl]);
+
+  // Auto-save to server (debounced) whenever shapes change
+  useEffect(() => {
+    if (isFirstLoad.current) return;
+    setSaveStatus("saving");
+    const id = shareUrl.split("/").pop();
+    const timer = setTimeout(() => {
+      fetch(`/api/annotations/${id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(shapes),
+      })
+        .then(() => setSaveStatus("saved"))
+        .catch(() => setSaveStatus(null));
+    }, 800);
+    return () => clearTimeout(timer);
   }, [shapes, shareUrl]);
 
   if (imageUrl !== loadedImageUrl) {
@@ -312,6 +324,11 @@ export default function AnnotationCanvas({
         onExport={handleExport}
       />
       <div className="relative flex flex-1 items-center justify-center overflow-auto bg-neutral-950">
+        {saveStatus && (
+          <div className="absolute right-3 top-3 z-10 rounded bg-neutral-800 px-2 py-1 text-xs text-neutral-400">
+            {saveStatus === "saving" ? "Saving…" : "Saved ✓"}
+          </div>
+        )}
         {imageStatus === "loading" && (
           <p className="text-neutral-400">Loading...</p>
         )}
