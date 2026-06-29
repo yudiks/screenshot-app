@@ -18,10 +18,13 @@ export async function GET(
 
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
+    cache: "no-store",
   });
   if (!res.ok) return NextResponse.json([]);
   const data = await res.json();
-  return NextResponse.json(data);
+  return NextResponse.json(data, {
+    headers: { "Cache-Control": "no-store" },
+  });
 }
 
 export async function POST(

@@ -60,7 +60,11 @@ export default function AnnotationCanvas({
         if (Array.isArray(data) && data.length > 0) setShapes(data);
       })
       .catch(() => {})
-      .finally(() => { isFirstLoad.current = false; });
+      .finally(() => {
+        // Use setTimeout so the flag flips after React has processed setShapes,
+        // preventing the loaded shapes from immediately triggering a re-save.
+        setTimeout(() => { isFirstLoad.current = false; }, 0);
+      });
   }, [shareUrl]);
 
   // Auto-save to server (debounced) whenever shapes change
@@ -150,6 +154,7 @@ export default function AnnotationCanvas({
   }, [selectedId, editingTextId]);
 
   function handlePointerDown(e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) {
+    if (editingTextId) return; // let blur commit the text first
     const stage = stageRef.current;
     if (!stage) return;
     const pos = stage.getRelativePointerPosition();
