@@ -18,7 +18,7 @@ import ShareBar from "@/components/ShareBar";
 
 const TOOLBAR_HEIGHT = 48;
 const SHAREBAR_HEIGHT = 40;
-const FONT_SIZE = 28;
+const DEFAULT_FONT_SIZE = 28;
 
 export default function AnnotationCanvas({
   imageUrl,
@@ -35,6 +35,7 @@ export default function AnnotationCanvas({
   const [stageScale, setStageScale] = useState(1);
   const [tool, setTool] = useState<Tool>("select");
   const [color, setColor] = useState("#ff3b30");
+  const [fontSize, setFontSize] = useState(DEFAULT_FONT_SIZE);
   const [shapes, setShapes] = useState<ShapeData[]>([]);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | null>(null);
   const isFirstLoad = useRef(true);
@@ -191,7 +192,7 @@ export default function AnnotationCanvas({
     if (tool === "text") {
       setShapes((prev) => [
         ...prev,
-        { id, type: "text", x: pos.x, y: pos.y, text: "", fill: color },
+        { id, type: "text", x: pos.x, y: pos.y, text: "", fill: color, fontSize },
       ]);
       setSelectedId(id);
       setEditingTextId(id);
@@ -329,6 +330,8 @@ export default function AnnotationCanvas({
         onToolChange={setTool}
         color={color}
         onColorChange={setColor}
+        fontSize={fontSize}
+        onFontSizeChange={setFontSize}
         onExport={handleExport}
       />
       <div className="relative flex flex-1 items-center justify-center overflow-auto bg-neutral-950">
@@ -408,7 +411,7 @@ export default function AnnotationCanvas({
                     y={s.y}
                     text={s.text || " "}
                     fill={s.fill}
-                    fontSize={FONT_SIZE}
+                    fontSize={s.fontSize ?? DEFAULT_FONT_SIZE}
                     onClick={() => {
                       if (tool !== "select") return;
                       if (selectedId === s.id) {
@@ -447,7 +450,7 @@ export default function AnnotationCanvas({
               position: "fixed",
               left: editorBox.left + editingShape.x * stageScale,
               top: editorBox.top + editingShape.y * stageScale,
-              fontSize: FONT_SIZE * stageScale,
+              fontSize: (editingShape.fontSize ?? DEFAULT_FONT_SIZE) * stageScale,
               color: editingShape.fill,
               background: "transparent",
               border: "1px dashed #999",

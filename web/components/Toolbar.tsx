@@ -9,17 +9,23 @@ const TOOLS: { id: Tool; label: string }[] = [
   { id: "text", label: "Text" },
 ];
 
+const FONT_SIZES = [16, 20, 28, 36, 48, 64];
+
 export default function Toolbar({
   tool,
   onToolChange,
   color,
   onColorChange,
+  fontSize,
+  onFontSizeChange,
   onExport,
 }: {
   tool: Tool;
   onToolChange: (tool: Tool) => void;
   color: string;
   onColorChange: (color: string) => void;
+  fontSize: number;
+  onFontSizeChange: (size: number) => void;
   onExport: () => void;
 }) {
   return (
@@ -37,6 +43,9 @@ export default function Toolbar({
           {t.label}
         </button>
       ))}
+
+      <div className="mx-1 h-6 w-px bg-neutral-600" />
+
       <input
         type="color"
         aria-label="Annotation color"
@@ -44,6 +53,22 @@ export default function Toolbar({
         onChange={(e) => onColorChange(e.target.value)}
         className="h-8 w-8 cursor-pointer rounded border border-neutral-600 bg-transparent"
       />
+
+      {tool === "text" && (
+        <select
+          aria-label="Font size"
+          value={fontSize}
+          onChange={(e) => onFontSizeChange(Number(e.target.value))}
+          className="rounded border border-neutral-600 bg-neutral-700 px-2 py-1 text-sm text-white"
+        >
+          {FONT_SIZES.map((s) => (
+            <option key={s} value={s}>
+              {s}px
+            </option>
+          ))}
+        </select>
+      )}
+
       <button
         type="button"
         onClick={onExport}

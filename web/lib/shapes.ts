@@ -27,6 +27,7 @@ export type TextShape = {
   y: number;
   text: string;
   fill: string;
+  fontSize: number;
 };
 
 export type ShapeData = RectShape | CircleShape | TextShape;
