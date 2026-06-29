@@ -8,7 +8,8 @@ const CAPTURE_SHORTCUT: &str = "CommandOrControl+Shift+9";
 // Set UPLOAD_API_BASE at build/run time to point at the deployed web/ app
 // (e.g. `UPLOAD_API_BASE=https://your-app.vercel.app cargo tauri dev`).
 fn upload_api_base() -> String {
-    std::env::var("UPLOAD_API_BASE").unwrap_or_else(|_| "http://localhost:3000".to_string())
+    std::env::var("UPLOAD_API_BASE")
+        .unwrap_or_else(|_| "https://web-tau-six-58.vercel.app".to_string())
 }
 
 #[derive(Clone, Serialize)]

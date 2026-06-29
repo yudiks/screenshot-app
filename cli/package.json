@@ -1,0 +1,8 @@
+{
+  "name": "screenshot-app-cli",
+  "version": "1.0.0",
+  "type": "module",
+  "bin": {
+    "screenshot-app": "./screenshot.mjs"
+  }
+}

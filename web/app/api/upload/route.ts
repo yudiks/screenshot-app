@@ -22,5 +22,17 @@ export async function POST(req: Request) {
   const id = nanoid();
   const { url: blobUrl } = await uploadScreenshot(id, file);
 
-  return Response.json({ id, url: `/s/${id}`, blobUrl });
+  const corsHeaders = { "Access-Control-Allow-Origin": "*" };
+  return Response.json({ id, url: `/s/${id}`, blobUrl }, { headers: corsHeaders });
+}
+
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    },
+  });
 }

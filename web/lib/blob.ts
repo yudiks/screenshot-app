@@ -1,11 +1,7 @@
 import { put } from "@vercel/blob";
 
 export function getScreenshotUrl(id: string): string {
-  const base = process.env.BLOB_BASE_URL;
-  if (!base) {
-    throw new Error("BLOB_BASE_URL is not set");
-  }
-  return `${base}/screenshots/${id}.png`;
+  return `/api/img/${id}`;
 }
 
 export async function uploadScreenshot(
@@ -13,7 +9,7 @@ export async function uploadScreenshot(
   file: Blob
 ): Promise<{ url: string }> {
   const blob = await put(`screenshots/${id}.png`, file, {
-    access: "public",
+    access: "private",
     addRandomSuffix: false,
     contentType: "image/png",
   });

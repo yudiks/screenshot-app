@@ -337,9 +337,11 @@ export default function AnnotationCanvas({
                     {...common}
                     x={s.x}
                     y={s.y}
-                    text={s.text}
+                    text={s.text || " "}
                     fill={s.fill}
                     fontSize={20}
+                    onDblClick={() => { setSelectedId(s.id); setEditingTextId(s.id); }}
+                    onDblTap={() => { setSelectedId(s.id); setEditingTextId(s.id); }}
                   />
                 );
               })}
@@ -374,7 +376,9 @@ export default function AnnotationCanvas({
                 e.preventDefault();
                 e.currentTarget.blur();
               }
-              if (e.key === "Escape") commitText(editingShape.id, "");
+              if (e.key === "Escape") {
+                commitText(editingShape.id, editingShape.text || "");
+              }
             }}
           />
         )}
