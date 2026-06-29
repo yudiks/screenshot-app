@@ -8,8 +8,9 @@ import { readFileSync, unlinkSync, existsSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 
+const urlFlagIdx = process.argv.indexOf("--url");
 const BASE_URL =
-  process.argv[process.argv.indexOf("--url") + 1] ??
+  (urlFlagIdx !== -1 ? process.argv[urlFlagIdx + 1] : undefined) ??
   process.env.SCREENSHOT_APP_URL ??
   "https://web-tau-six-58.vercel.app";
 
