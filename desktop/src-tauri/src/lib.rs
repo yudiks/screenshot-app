@@ -1,5 +1,9 @@
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Emitter};
+use tauri::{
+    AppHandle, Emitter,
+    menu::{Menu, MenuItem},
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 use tauri_plugin_opener::OpenerExt;
 
@@ -180,6 +184,41 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![capture_now])
         .setup(|app| {
             app.global_shortcut().register(CAPTURE_SHORTCUT)?;
+
+            // Hide dock icon on macOS — lives in the menu bar only
+            #[cfg(target_os = "macos")]
+            app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+
+            let capture_item = MenuItem::with_id(app, "capture", "Capture (⌘⇧9)", true, None::<&str>)?;
+            let quit_item = MenuItem::with_id(app, "quit", "Quit ScreenCapture", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&capture_item, &quit_item])?;
+
+            TrayIconBuilder::with_id("main")
+                .icon(app.default_window_icon().unwrap().clone())
+                .menu(&menu)
+                .tooltip("ScreenCapture")
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "capture" => {
+                        let app = app.clone();
+                        tauri::async_runtime::spawn(capture_and_share(app));
+                    }
+                    "quit" => app.exit(0),
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } = event
+                    {
+                        let app = tray.app_handle();
+                        let app = app.clone();
+                        tauri::async_runtime::spawn(capture_and_share(app));
+                    }
+                })
+                .build(app)?;
+
             Ok(())
         })
         .run(tauri::generate_context!())
