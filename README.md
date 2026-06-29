@@ -9,13 +9,13 @@ Capture a screen region on Mac, get a shareable link instantly, and annotate wit
 ## Download the Mac App
 
 1. Go to the [Releases page](https://github.com/yudiks/screenshot-app/releases) and download the latest `.dmg`.
-2. Open the `.dmg`, drag **ScreenshotApp** into Applications.
+2. Open the `.dmg`, drag **ScreenCapture** into Applications.
 3. Launch the app.
 4. Press **⌘⇧9** or click **Capture Now** — drag to select a region and the annotation page opens automatically.
 
 > **macOS security warning:** The app is not code-signed, so macOS may say it's "damaged". Run this once in Terminal after installing:
 > ```bash
-> xattr -cr /Applications/desktop.app
+> xattr -cr /Applications/ScreenCapture.app
 > ```
 
 ### Build from source
