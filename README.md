@@ -6,7 +6,7 @@ Capture a screen region on Mac, get a shareable link instantly, and annotate wit
 
 ## Demo
 
-https://github.com/yudiks/screenshot-app/releases/download/v0.4.0/demo-video.mp4
+<video src="https://github.com/yudiks/screenshot-app/releases/download/v0.4.0/demo-video.mp4" controls width="100%"></video>
 
 ---
 
