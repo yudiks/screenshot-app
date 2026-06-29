@@ -18,7 +18,7 @@ import ShareBar from "@/components/ShareBar";
 
 const TOOLBAR_HEIGHT = 48;
 const SHAREBAR_HEIGHT = 40;
-const DEFAULT_FONT_SIZE = 28;
+const DEFAULT_FONT_SIZE = 48;
 
 export default function AnnotationCanvas({
   imageUrl,
@@ -35,7 +35,7 @@ export default function AnnotationCanvas({
   const [stageScale, setStageScale] = useState(1);
   const [tool, setTool] = useState<Tool>("select");
   const [color, setColor] = useState("#ff3b30");
-  const [fontSize, setFontSize] = useState(DEFAULT_FONT_SIZE);
+  const [fontSize, setFontSize] = useState(48);
   const [shapes, setShapes] = useState<ShapeData[]>([]);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | null>(null);
   const isFirstLoad = useRef(true);

@@ -9,7 +9,7 @@ const TOOLS: { id: Tool; label: string }[] = [
   { id: "text", label: "Text" },
 ];
 
-const FONT_SIZES = [16, 20, 28, 36, 48, 64];
+const FONT_SIZES = [48, 64, 80, 96, 128];
 
 export default function Toolbar({
   tool,
