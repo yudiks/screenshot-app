@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import {
   Stage,
   Layer,
@@ -46,6 +46,7 @@ export default function AnnotationCanvas({
 
   const stageRef = useRef<Konva.Stage>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const shapeRefs = useRef<Map<string, Konva.Node>>(new Map());
   const drawingRef = useRef<{ id: string; startX: number; startY: number } | null>(
     null
@@ -136,6 +137,8 @@ export default function AnnotationCanvas({
     if (!stage) return;
     const box = stage.container().getBoundingClientRect();
     setEditorBox({ left: box.left, top: box.top });
+    // Delay focus so the Konva mousedown's focus side-effect settles first
+    setTimeout(() => textareaRef.current?.focus(), 0);
   }, [editingTextId]);
 
   // Delete selected shape with Delete or Backspace
@@ -421,7 +424,8 @@ export default function AnnotationCanvas({
         )}
         {editingShape && editorBox && (
           <textarea
-            autoFocus
+            key={editingShape.id}
+            ref={textareaRef}
             defaultValue={editingShape.text}
             style={{
               position: "fixed",
