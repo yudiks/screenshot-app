@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "predev": "npm run build:recorder",
+    "build:recorder": "bash src-tauri/scripts/build-recorder.sh",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri"
