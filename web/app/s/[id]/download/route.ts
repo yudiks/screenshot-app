@@ -1,11 +1,19 @@
 import { list } from "@vercel/blob";
 import { NextRequest, NextResponse } from "next/server";
+import { Resvg } from "@resvg/resvg-js";
 import sharp from "sharp";
+import path from "path";
 import type { ShapeData } from "@/lib/shapes";
 
 export const runtime = "nodejs";
 
 const STROKE_WIDTH = 3;
+const FONT_FAMILY = "Roboto, sans-serif";
+// Bundled font — Vercel's serverless runtime has no system fonts, so text in
+// the SVG overlay would render blank without an explicitly loaded font. This
+// path is force-included in the deployment via `outputFileTracingIncludes` in
+// next.config.ts.
+const FONT_PATH = path.join(process.cwd(), "assets/fonts/Roboto-Regular.ttf");
 
 function escapeXml(s: string): string {
   return s.replace(/[<>&"']/g, (c) =>
@@ -38,7 +46,7 @@ function shapesToSvg(shapes: ShapeData[], width: number, height: number): string
           `<tspan x="${s.x}" y="${s.y + s.fontSize * (i + 0.8)}">${escapeXml(line)}</tspan>`
       )
       .join("");
-    return `<text font-family="Arial, Helvetica, sans-serif" font-size="${s.fontSize}" fill="${escapeXml(s.fill)}">${tspans}</text>`;
+    return `<text font-family="${FONT_FAMILY}" font-size="${s.fontSize}" fill="${escapeXml(s.fill)}">${tspans}</text>`;
   });
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">${parts.join("")}</svg>`;
@@ -78,8 +86,22 @@ export async function GET(
     const base = sharp(pngBuffer);
     const { width, height } = await base.metadata();
     const svg = shapesToSvg(shapes, width, height);
+    // Rasterize the overlay with resvg using the bundled font, then composite.
+    // (sharp's own SVG renderer relies on librsvg + system fonts, which Vercel
+    // lacks, so text would silently render blank.)
+    const overlay = new Resvg(svg, {
+      fitTo: { mode: "original" },
+      font: {
+        fontFiles: [FONT_PATH],
+        loadSystemFonts: false,
+        defaultFontFamily: "Roboto",
+        sansSerifFamily: "Roboto",
+      },
+    })
+      .render()
+      .asPng();
     out = await base
-      .composite([{ input: Buffer.from(svg), top: 0, left: 0 }])
+      .composite([{ input: overlay, top: 0, left: 0 }])
       .png()
       .toBuffer();
   }

@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "@vercel/blob": "^2.5.0",
     "konva": "^10.3.0",
     "nanoid": "^5.1.16",
