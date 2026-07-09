@@ -84,7 +84,13 @@ export async function GET(
       .toBuffer();
   }
 
-  return new NextResponse(out, {
+  // Copy into a standalone, byteOffset-0 Uint8Array. sharp's toBuffer() can
+  // return a Buffer that is a view into a larger pooled ArrayBuffer, which the
+  // Vercel Node response adapter mishandles (UTF-8-decodes the bytes, turning
+  // every byte >= 0x80 into U+FFFD and corrupting the PNG). A tight copy avoids it.
+  const body = new Uint8Array(out);
+
+  return new NextResponse(body, {
     headers: {
       "Content-Type": "image/png",
       "Content-Disposition": `attachment; filename="${id}.png"`,
