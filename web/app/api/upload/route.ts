@@ -1,5 +1,5 @@
 import { nanoid } from "nanoid";
-import { uploadScreenshot } from "@/lib/blob";
+import { uploadScreenshot, uploadSource } from "@/lib/blob";
 
 export const runtime = "nodejs";
 
@@ -32,6 +32,12 @@ export async function POST(req: Request) {
 
   const id = nanoid();
   const { url: blobUrl } = await uploadScreenshot(id, file);
+
+  // Optional source URL (e.g. the browser tab a window was captured from).
+  const sourceUrl = form.get("sourceUrl");
+  if (typeof sourceUrl === "string" && /^https?:\/\//i.test(sourceUrl)) {
+    await uploadSource(id, sourceUrl);
+  }
 
   return Response.json({ id, url: `/s/${id}`, blobUrl }, { headers: CORS });
 }

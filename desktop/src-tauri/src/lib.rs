@@ -49,8 +49,79 @@ fn emit_status(app: &AppHandle, status: CaptureStatus) {
     let _ = app.emit("capture-status", status);
 }
 
+/// Run an AppleScript and return its trimmed stdout, or `None` on failure/empty.
+#[cfg(target_os = "macos")]
+fn run_osascript(script: &str) -> Option<String> {
+    let output = std::process::Command::new("osascript")
+        .arg("-e")
+        .arg(script)
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let s = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if s.is_empty() { None } else { Some(s) }
+}
+
+/// If the frontmost app is a supported browser, return its active tab's URL.
+/// Uses AppleScript (Apple Events); returns `None` when the front app isn't a
+/// browser, on any scripting error, or if automation permission is denied.
+///
+/// The frontmost app name is resolved first (System Events only, so the script
+/// always compiles), then a *literal* `tell` targets that browser — a variable
+/// app name can't be compiled against app-specific terminology like `URL`.
+#[cfg(target_os = "macos")]
+fn frontmost_browser_url() -> Option<String> {
+    // Chromium-family browsers share the same scripting terms; Safari differs.
+    const CHROMIUM: &[&str] = &[
+        "Google Chrome",
+        "Google Chrome Beta",
+        "Google Chrome Canary",
+        "Chromium",
+        "Brave Browser",
+        "Microsoft Edge",
+        "Arc",
+        "Vivaldi",
+        "Opera",
+    ];
+
+    let front = run_osascript(
+        r#"tell application "System Events" to get name of first application process whose frontmost is true"#,
+    )?;
+
+    // `front` is constrained to the literals below before interpolation.
+    let script = if front == "Safari" {
+        r#"tell application "Safari" to get URL of front document"#.to_string()
+    } else if CHROMIUM.contains(&front.as_str()) {
+        format!(r#"tell application "{front}" to get URL of active tab of front window"#)
+    } else {
+        return None;
+    };
+
+    let url = run_osascript(&script)?;
+    if url.starts_with("http://") || url.starts_with("https://") {
+        Some(url)
+    } else {
+        None
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn frontmost_browser_url() -> Option<String> {
+    None
+}
+
 async fn capture_and_share(app: AppHandle, mode: CaptureMode) {
     emit_status(&app, CaptureStatus::Capturing);
+
+    // Capture the source URL from the frontmost browser *before* the interactive
+    // window picker runs (it would change the frontmost app). Only for window
+    // captures — a region or full-screen grab isn't tied to one browser window.
+    let source_url = match mode {
+        CaptureMode::Window => frontmost_browser_url(),
+        _ => None,
+    };
 
     let tmp_path = std::env::temp_dir().join(format!(
         "screenshot-app-{}.png",
@@ -105,12 +176,18 @@ async fn capture_and_share(app: AppHandle, mode: CaptureMode) {
     };
     let _ = std::fs::remove_file(&tmp_path);
 
-    upload_and_open(&app, bytes, "screenshot.png", "image/png").await;
+    upload_and_open(&app, bytes, "screenshot.png", "image/png", source_url).await;
 }
 
 /// Upload a captured file (image or video) to the backend and open the
 /// returned share URL in the browser. Emits status updates throughout.
-async fn upload_and_open(app: &AppHandle, bytes: Vec<u8>, file_name: &str, mime: &str) {
+async fn upload_and_open(
+    app: &AppHandle,
+    bytes: Vec<u8>,
+    file_name: &str,
+    mime: &str,
+    source_url: Option<String>,
+) {
     emit_status(app, CaptureStatus::Uploading);
 
     let part = match reqwest::multipart::Part::bytes(bytes)
@@ -128,7 +205,10 @@ async fn upload_and_open(app: &AppHandle, bytes: Vec<u8>, file_name: &str, mime:
             return;
         }
     };
-    let form = reqwest::multipart::Form::new().part("file", part);
+    let mut form = reqwest::multipart::Form::new().part("file", part);
+    if let Some(url) = source_url {
+        form = form.text("sourceUrl", url);
+    }
 
     let client = reqwest::Client::new();
     let response = client

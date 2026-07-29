@@ -23,9 +23,11 @@ const DEFAULT_FONT_SIZE = 48;
 export default function AnnotationCanvas({
   imageUrl,
   shareUrl,
+  sourceUrl,
 }: {
   imageUrl: string;
   shareUrl: string;
+  sourceUrl?: string | null;
 }) {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [imageStatus, setImageStatus] = useState<"loading" | "loaded" | "error">(
@@ -472,7 +474,7 @@ export default function AnnotationCanvas({
           />
         )}
       </div>
-      <ShareBar shareUrl={shareUrl} />
+      <ShareBar shareUrl={shareUrl} sourceUrl={sourceUrl} />
     </div>
   );
 }
